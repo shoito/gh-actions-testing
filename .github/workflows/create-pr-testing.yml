@@ -49,13 +49,17 @@ jobs:
           gh pr create \
             --base main \
             --head ${{ steps.branch.outputs.branch-name }} \
-            --title "${{ fromJson(steps.trigger-pr.outputs.merged-pr).title }}" \
+            --title "$PR_TITLE" \
             --body "
           ## Update
 
-          - [#${{ fromJson(steps.trigger-pr.outputs.merged-pr).number }} ${{ fromJson(steps.trigger-pr.outputs.merged-pr).title }}](${{ fromJson(steps.trigger-pr.outputs.merged-pr).html_url }})
+          - [#$PR_NUMBER $PR_TITLE]($PR_URL)
 
-          ${{ fromJson(steps.trigger-pr.outputs.merged-pr).body }}
+          $PR_BODY
           "
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: ${{ fromJson(steps.trigger-pr.outputs.merged-pr).title }}
+          PR_BODY: ${{ fromJson(steps.trigger-pr.outputs.merged-pr).body }}
+          PR_NUMBER: ${{ fromJson(steps.trigger-pr.outputs.merged-pr).number }}
+          PR_URL: ${{ fromJson(steps.trigger-pr.outputs.merged-pr).html_url }}
