@@ -1,0 +1,65 @@
+name: Create PR testing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  testing:
+    timeout-minutes: 10
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get the latest merge PR
+        id: trigger-pr
+        run: |
+          merged_pr=$(
+            curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/search/issues?q=repo:shoito/gh-actions-testing+is:pr+is:merged
+          )
+          echo "merged-pr=$(echo $merged_pr | jq '.items[0]' | jq -c .)" >> $GITHUB_OUTPUT
+
+      - name: Create Branch Name
+        id: branch
+        env:
+          TZ: 'Asia/Tokyo'
+        run: echo "branch-name=feature/update-$(date +'%Y-%m-%d_%H-%M')" >> $GITHUB_OUTPUT
+
+      - name: Commit and push files
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git switch -c "${{ steps.branch.outputs.branch-name }}"
+          echo "Update at $(date "+%Y-%m-%d %H:%M:%S")  " >> README.md
+          git commit -am "Update at $(date "+%Y-%m-%d %H:%M:%S")"
+          git push origin ${{ steps.branch.outputs.branch-name }}
+
+      - name: Create PR
+        run: |
+          gh pr create \
+            --base main \
+            --head ${{ steps.branch.outputs.branch-name }} \
+            --title "$PR_TITLE" \
+            --body "
+          ## Update
+
+          - [#$PR_NUMBER $PR_TITLE]($PR_URL)
+
+          $PR_BODY
+          "
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: ${{ fromJson(steps.trigger-pr.outputs.merged-pr).title }}
+          PR_BODY: ${{ fromJson(steps.trigger-pr.outputs.merged-pr).body }}
+          PR_NUMBER: ${{ fromJson(steps.trigger-pr.outputs.merged-pr).number }}
+          PR_URL: ${{ fromJson(steps.trigger-pr.outputs.merged-pr).html_url }}
