@@ -8,6 +8,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  TESTING_LABEL: testing-label
+
 jobs:
   testing:
     timeout-minutes: 10
@@ -49,6 +52,7 @@ jobs:
           gh pr create \
             --base main \
             --head ${{ steps.branch.outputs.branch-name }} \
+            --label "$TESTING_LABEL" \
             --title "$PR_TITLE" \
             --body "
           ## Update
